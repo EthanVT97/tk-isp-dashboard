@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDashboardStats } from '@/lib/supabase'
+import { getDashboardStats } from '@/lib/supabase-server'
 
 export async function GET() {
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getNetworkDevices, getNetworkMetrics } from '@/lib/supabase'
+import { getNetworkDevices, getNetworkMetrics } from '@/lib/supabase-server'
 
 export async function GET() {
   try {
