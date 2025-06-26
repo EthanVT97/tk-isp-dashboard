@@ -12,14 +12,13 @@ interface ToastProps {
 }
 
 export function Toast({ title, description, type, onClose }: ToastProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    setIsVisible(true);
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300);
-    }, 4700);
+      setTimeout(onClose, 300); // Wait for animation to complete
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, [onClose]);
@@ -57,38 +56,36 @@ export function Toast({ title, description, type, onClose }: ToastProps) {
   return (
     <div
       className={cn(
-        "max-w-sm w-full shadow-lg rounded-lg pointer-events-auto border transition-all duration-300 transform",
+        'max-w-sm w-full border rounded-lg shadow-lg p-4 transition-all duration-300 transform',
         getBackgroundColor(),
-        isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
+        isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       )}
     >
-      <div className="p-4">
-        <div className="flex items-start">
-          <div className="flex-shrink-0">
-            {getIcon()}
-          </div>
-          <div className="ml-3 w-0 flex-1">
-            <p className="text-sm font-medium text-gray-900">
-              {title}
+      <div className="flex items-start">
+        <div className="flex-shrink-0">
+          {getIcon()}
+        </div>
+        <div className="ml-3 w-0 flex-1">
+          <p className="text-sm font-medium text-gray-900">
+            {title}
+          </p>
+          {description && (
+            <p className="mt-1 text-sm text-gray-500">
+              {description}
             </p>
-            {description && (
-              <p className="mt-1 text-sm text-gray-500">
-                {description}
-              </p>
-            )}
-          </div>
-          <div className="ml-4 flex-shrink-0 flex">
-            <button
-              className="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              onClick={() => {
-                setIsVisible(false);
-                setTimeout(onClose, 300);
-              }}
-            >
-              <span className="sr-only">Close</span>
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          )}
+        </div>
+        <div className="ml-4 flex-shrink-0 flex">
+          <button
+            className="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            onClick={() => {
+              setIsVisible(false);
+              setTimeout(onClose, 300);
+            }}
+          >
+            <span className="sr-only">Close</span>
+            <X className="h-5 w-5" />
+          </button>
         </div>
       </div>
     </div>

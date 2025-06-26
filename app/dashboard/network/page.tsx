@@ -27,9 +27,9 @@ interface NetworkDevice {
   status: 'online' | 'offline' | 'warning';
   location: string;
   uptime: string;
-  connectedUsers: number;
+  connected_users: number;
   bandwidth: number;
-  lastSeen: string;
+  last_seen: string;
 }
 
 export default function NetworkPage() {
@@ -49,98 +49,77 @@ export default function NetworkPage() {
   });
 
   useEffect(() => {
-    // Mock data
-    const mockDevices: NetworkDevice[] = [
-      {
-        id: 'RTR001',
-        name: 'Main Router - Yangon',
-        type: 'router',
-        status: 'online',
-        location: 'Yangon Central Office',
-        uptime: '45 days, 12 hours',
-        connectedUsers: 156,
-        bandwidth: 85,
-        lastSeen: '2024-12-15 14:30'
-      },
-      {
-        id: 'RTR002',
-        name: 'Secondary Router - Mandalay',
-        type: 'router',
-        status: 'online',
-        location: 'Mandalay Branch',
-        uptime: '32 days, 8 hours',
-        connectedUsers: 89,
-        bandwidth: 67,
-        lastSeen: '2024-12-15 14:29'
-      },
-      {
-        id: 'AP001',
-        name: 'Access Point - Downtown',
-        type: 'access_point',
-        status: 'warning',
-        location: 'Downtown Area',
-        uptime: '12 days, 3 hours',
-        connectedUsers: 45,
-        bandwidth: 92,
-        lastSeen: '2024-12-15 14:25'
-      },
-      {
-        id: 'SW001',
-        name: 'Core Switch - HQ',
-        type: 'switch',
-        status: 'online',
-        location: 'Headquarters',
-        uptime: '67 days, 15 hours',
-        connectedUsers: 234,
-        bandwidth: 78,
-        lastSeen: '2024-12-15 14:30'
-      },
-      {
-        id: 'RTR003',
-        name: 'Backup Router - Naypyidaw',
-        type: 'router',
-        status: 'offline',
-        location: 'Naypyidaw Office',
-        uptime: '0 days, 0 hours',
-        connectedUsers: 0,
-        bandwidth: 0,
-        lastSeen: '2024-12-14 09:15'
+    const fetchNetworkData = async () => {
+      try {
+        const response = await fetch('/api/dashboard/network');
+        if (response.ok) {
+          const data = await response.json();
+          setDevices(data.devices || []);
+          setNetworkData(data.metrics?.networkData || []);
+          setBandwidthData(data.metrics?.bandwidthData || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch network data:', error);
+        // Use mock data as fallback
+        const mockDevices: NetworkDevice[] = [
+          {
+            id: 'RTR001',
+            name: 'Main Router - Yangon',
+            type: 'router',
+            status: 'online',
+            location: 'Yangon Central Office',
+            uptime: '45 days, 12 hours',
+            connected_users: 156,
+            bandwidth: 85,
+            last_seen: '2024-12-15 14:30'
+          },
+          {
+            id: 'RTR002',
+            name: 'Secondary Router - Mandalay',
+            type: 'router',
+            status: 'online',
+            location: 'Mandalay Branch',
+            uptime: '32 days, 8 hours',
+            connected_users: 89,
+            bandwidth: 67,
+            last_seen: '2024-12-15 14:29'
+          },
+          {
+            id: 'AP001',
+            name: 'Access Point - Downtown',
+            type: 'access_point',
+            status: 'warning',
+            location: 'Downtown Area',
+            uptime: '12 days, 3 hours',
+            connected_users: 45,
+            bandwidth: 92,
+            last_seen: '2024-12-15 14:25'
+          }
+        ];
+        setDevices(mockDevices);
+        
+        // Generate mock chart data
+        const generateMockData = () => {
+          const now = new Date();
+          const data = [];
+          for (let i = 23; i >= 0; i--) {
+            const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+            data.push({
+              time: `${time.getHours()}:00`,
+              value: Math.floor(Math.random() * 20) + 70 + Math.sin(i / 4) * 10
+            });
+          }
+          return data;
+        };
+        
+        setNetworkData(generateMockData());
+        setBandwidthData(generateMockData());
+      } finally {
+        setLoading(false);
       }
-    ];
-
-    // Generate mock network data
-    const generateNetworkData = () => {
-      const now = new Date();
-      const data = [];
-      for (let i = 23; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-        data.push({
-          time: `${time.getHours()}:00`,
-          value: Math.floor(Math.random() * 20) + 70 + Math.sin(i / 4) * 10
-        });
-      }
-      return data;
     };
 
-    const generateBandwidthData = () => {
-      const now = new Date();
-      const data = [];
-      for (let i = 23; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-        data.push({
-          time: `${time.getHours()}:00`,
-          value: Math.floor(Math.random() * 30) + 40 + Math.cos(i / 3) * 15
-        });
-      }
-      return data;
-    };
-
-    setTimeout(() => {
-      setDevices(mockDevices);
-      setNetworkData(generateNetworkData());
-      setBandwidthData(generateBandwidthData());
-      setLoading(false);
-    }, 1000);
+    fetchNetworkData();
   }, []);
 
   const getDeviceIcon = (type: string) => {
@@ -338,7 +317,7 @@ export default function NetworkPage() {
                         {device.location}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {device.connectedUsers}
+                        {device.connected_users}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">

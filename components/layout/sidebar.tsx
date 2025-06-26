@@ -37,6 +37,11 @@ export function Sidebar() {
     setLanguage(language === 'en' ? 'my' : 'en');
   };
 
+  const handleLogout = () => {
+    // Implement logout logic here
+    console.log('Logout clicked');
+  };
+
   const sidebarContent = (
     <div className="flex flex-col h-full bg-white border-r border-gray-200">
       {/* Header */}
@@ -110,6 +115,7 @@ export function Sidebar() {
 
         {/* Logout */}
         <button
+          onClick={handleLogout}
           className={cn(
             "w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-red-700 hover:bg-red-50 transition-smooth",
             isCollapsed && "justify-center px-2"

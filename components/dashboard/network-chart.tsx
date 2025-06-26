@@ -11,10 +11,6 @@ interface NetworkChartProps {
 }
 
 export function NetworkChart({ title, data, color = '#3B82F6', loading = false }: NetworkChartProps) {
-  const maxValue = Math.max(...data.map(d => d.value));
-  const minValue = Math.min(...data.map(d => d.value));
-  const range = maxValue - minValue;
-
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -25,6 +21,27 @@ export function NetworkChart({ title, data, color = '#3B82F6', loading = false }
       </div>
     );
   }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <div className="flex items-center text-sm text-gray-500">
+            <Activity className="w-4 h-4 mr-1" />
+            No Data
+          </div>
+        </div>
+        <div className="h-40 flex items-center justify-center text-gray-500">
+          No data available
+        </div>
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...data.map(d => d.value));
+  const minValue = Math.min(...data.map(d => d.value));
+  const range = maxValue - minValue || 1; // Prevent division by zero
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 chart-animate">
@@ -59,7 +76,7 @@ export function NetworkChart({ title, data, color = '#3B82F6', loading = false }
             strokeLinecap="round"
             strokeLinejoin="round"
             points={data.map((point, index) => {
-              const x = (index / (data.length - 1)) * 400;
+              const x = (index / Math.max(data.length - 1, 1)) * 400;
               const y = 160 - ((point.value - minValue) / range) * 160;
               return `${x},${y}`;
             }).join(' ')}
@@ -67,7 +84,7 @@ export function NetworkChart({ title, data, color = '#3B82F6', loading = false }
           
           {/* Data points */}
           {data.map((point, index) => {
-            const x = (index / (data.length - 1)) * 400;
+            const x = (index / Math.max(data.length - 1, 1)) * 400;
             const y = 160 - ((point.value - minValue) / range) * 160;
             return (
               <circle
@@ -85,13 +102,13 @@ export function NetworkChart({ title, data, color = '#3B82F6', loading = false }
         {/* Current value indicator */}
         <div className="absolute top-2 right-2 flex items-center space-x-2">
           <div className="flex items-center">
-            {data[data.length - 1]?.value > data[data.length - 2]?.value ? (
+            {data.length > 1 && data[data.length - 1]?.value > data[data.length - 2]?.value ? (
               <TrendingUp className="w-4 h-4 text-green-500" />
             ) : (
               <TrendingDown className="w-4 h-4 text-red-500" />
             )}
             <span className="text-lg font-bold text-gray-900 ml-1">
-              {data[data.length - 1]?.value}%
+              {data[data.length - 1]?.value || 0}%
             </span>
           </div>
         </div>
