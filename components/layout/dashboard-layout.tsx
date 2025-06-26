@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { Sidebar } from './sidebar';
+import { Navbar } from './navbar';
 import { Toast } from '@/components/ui/toast';
 import { useToast } from '@/lib/contexts/toast-context';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -17,8 +19,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar />
       
       <main className="lg:ml-64 transition-smooth">
-        <div className="p-4 lg:p-8 pt-20 lg:pt-8">
-          {children}
+        <Navbar />
+        <div className="p-4 lg:p-8">
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
 

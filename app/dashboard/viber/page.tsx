@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { 
   MessageSquare, 
   Bot, 
@@ -16,93 +15,35 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '@/lib/contexts/language-context';
+import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 
 interface ViberMessage {
   id: string;
-  customerName: string;
+  customer_name: string;
   message: string;
   response: string;
   timestamp: string;
   status: 'pending' | 'responded' | 'escalated';
-  isAutoResponse: boolean;
+  is_auto_response: boolean;
 }
 
 interface ViberStats {
-  totalMessages: number;
-  autoResponses: number;
-  manualResponses: number;
-  responseTime: number;
+  total_messages: number;
+  auto_responses: number;
+  manual_responses: number;
+  response_time: number;
   satisfaction: number;
+}
+
+interface ViberData {
+  messages: ViberMessage[];
+  stats: ViberStats;
 }
 
 export default function ViberPage() {
   const { language, t } = useLanguage();
-  const [loading, setLoading] = useState(true);
-  const [messages, setMessages] = useState<ViberMessage[]>([]);
-  const [stats, setStats] = useState<ViberStats>({
-    totalMessages: 0,
-    autoResponses: 0,
-    manualResponses: 0,
-    responseTime: 0,
-    satisfaction: 0
-  });
-
-  useEffect(() => {
-    // Mock data
-    const mockMessages: ViberMessage[] = [
-      {
-        id: 'MSG001',
-        customerName: 'မောင်ရဲမင်း',
-        message: 'ကျွန်တော့်အင်တာနက်နှေးနေပါတယ်။ ဘာလုပ်ရမလဲ?',
-        response: 'သင့်အင်တာနက်ပြဿနာအတွက် စိတ်မကောင်းပါဘူး။ Router ကို restart လုပ်ကြည့်ပါ။',
-        timestamp: '2024-12-15 14:30',
-        status: 'responded',
-        isAutoResponse: true
-      },
-      {
-        id: 'MSG002',
-        customerName: 'Daw Thida',
-        message: 'How can I upgrade my internet package?',
-        response: 'You can upgrade your package through our website or call our customer service.',
-        timestamp: '2024-12-15 13:45',
-        status: 'responded',
-        isAutoResponse: true
-      },
-      {
-        id: 'MSG003',
-        customerName: 'Ko Aung',
-        message: 'ငွေပေးချေမှုအတွက် ဘယ်လိုလုပ်ရမလဲ?',
-        response: '',
-        timestamp: '2024-12-15 13:20',
-        status: 'pending',
-        isAutoResponse: false
-      },
-      {
-        id: 'MSG004',
-        customerName: 'Ma Su Su',
-        message: 'My WiFi password is not working',
-        response: 'Please check your router label for the correct password or contact support.',
-        timestamp: '2024-12-15 12:15',
-        status: 'escalated',
-        isAutoResponse: false
-      }
-    ];
-
-    const mockStats: ViberStats = {
-      totalMessages: 1247,
-      autoResponses: 892,
-      manualResponses: 355,
-      responseTime: 2.3,
-      satisfaction: 4.2
-    };
-
-    setTimeout(() => {
-      setMessages(mockMessages);
-      setStats(mockStats);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const { data, loading, error } = useApi<ViberData>('/api/dashboard/viber');
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -167,7 +108,7 @@ export default function ViberPage() {
                   <MessageSquare className="w-5 h-5 text-blue-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.totalMessages.toLocaleString()}
+                  {data?.stats?.total_messages?.toLocaleString() || '0'}
                 </p>
               </>
             )}
@@ -186,10 +127,11 @@ export default function ViberPage() {
                   <Bot className="w-5 h-5 text-green-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.autoResponses.toLocaleString()}
+                  {data?.stats?.auto_responses?.toLocaleString() || '0'}
                 </p>
                 <p className="text-sm text-green-600">
-                  {((stats.autoResponses / stats.totalMessages) * 100).toFixed(1)}% automated
+                  {data?.stats?.total_messages ? 
+                    ((data.stats.auto_responses / data.stats.total_messages) * 100).toFixed(1) : 0}% automated
                 </p>
               </>
             )}
@@ -208,10 +150,11 @@ export default function ViberPage() {
                   <Users className="w-5 h-5 text-purple-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.manualResponses.toLocaleString()}
+                  {data?.stats?.manual_responses?.toLocaleString() || '0'}
                 </p>
                 <p className="text-sm text-purple-600">
-                  {((stats.manualResponses / stats.totalMessages) * 100).toFixed(1)}% manual
+                  {data?.stats?.total_messages ? 
+                    ((data.stats.manual_responses / data.stats.total_messages) * 100).toFixed(1) : 0}% manual
                 </p>
               </>
             )}
@@ -230,7 +173,7 @@ export default function ViberPage() {
                   <Activity className="w-5 h-5 text-yellow-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.responseTime}min
+                  {data?.stats?.response_time || 0}min
                 </p>
                 <p className="text-sm text-green-600">-15% from last week</p>
               </>
@@ -250,7 +193,7 @@ export default function ViberPage() {
                   <CheckCircle className="w-5 h-5 text-green-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.satisfaction}/5.0
+                  {data?.stats?.satisfaction || 0}/5.0
                 </p>
                 <p className="text-sm text-green-600">+0.3 from last month</p>
               </>
@@ -281,7 +224,7 @@ export default function ViberPage() {
                 </div>
               ))
             ) : (
-              messages.map((message) => (
+              data?.messages?.map((message) => (
                 <div key={message.id} className="p-6 hover:bg-gray-50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -290,10 +233,10 @@ export default function ViberPage() {
                           "font-medium text-gray-900",
                           language === 'my' && "font-myanmar"
                         )}>
-                          {message.customerName}
+                          {message.customer_name}
                         </h4>
                         <span className="text-sm text-gray-500">{message.timestamp}</span>
-                        {message.isAutoResponse && (
+                        {message.is_auto_response && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             <Bot className="w-3 h-3 mr-1" />
                             Auto

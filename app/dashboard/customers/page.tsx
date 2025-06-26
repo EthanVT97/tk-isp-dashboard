@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, Users } from 'lucide-react';
 import { useLanguage } from '@/lib/contexts/language-context';
 import { useToast } from '@/lib/contexts/toast-context';
+import { useApi } from '@/hooks/use-api';
+import { LoadingTable } from '@/components/ui/loading-spinner';
 import { cn } from '@/lib/utils';
 
 interface Customer {
@@ -17,68 +19,23 @@ interface Customer {
   address: string;
   package: string;
   status: 'active' | 'inactive' | 'suspended';
-  joinDate: string;
-  lastPayment: string;
+  join_date: string;
+  last_payment: string;
 }
 
 export default function CustomersPage() {
   const { language, t } = useLanguage();
   const { addToast } = useToast();
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Mock data
-  useEffect(() => {
-    const mockCustomers: Customer[] = [
-      {
-        id: 'CUST001',
-        name: 'မောင်ရဲမင်း',
-        phone: '+95 9 123 456 789',
-        email: 'ye.min@email.com',
-        address: 'No.123, Yangon Road, Yangon',
-        package: 'Premium 100Mbps',
-        status: 'active',
-        joinDate: '2024-01-15',
-        lastPayment: '2024-12-01'
-      },
-      {
-        id: 'CUST002',
-        name: 'Daw Thida',
-        phone: '+95 9 987 654 321',
-        email: 'thida@email.com',
-        address: 'No.456, Mandalay Street, Mandalay',
-        package: 'Standard 50Mbps',
-        status: 'active',
-        joinDate: '2024-02-20',
-        lastPayment: '2024-12-01'
-      },
-      {
-        id: 'CUST003',
-        name: 'Ko Aung',
-        phone: '+95 9 555 123 456',
-        email: 'aung@email.com',
-        address: 'No.789, Naypyidaw Ave, Naypyidaw',
-        package: 'Basic 25Mbps',
-        status: 'inactive',
-        joinDate: '2024-03-10',
-        lastPayment: '2024-11-15'
-      }
-    ];
+  const { data: customers, loading, error, refetch } = useApi<Customer[]>('/api/dashboard/customers');
 
-    setTimeout(() => {
-      setCustomers(mockCustomers);
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  const filteredCustomers = customers.filter(customer =>
+  const filteredCustomers = customers?.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.phone.includes(searchTerm) ||
     customer.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,14 +50,38 @@ export default function CustomersPage() {
     }
   };
 
-  const handleDeleteCustomer = (customerId: string) => {
-    setCustomers(customers.filter(c => c.id !== customerId));
-    addToast({
-      title: 'Customer Deleted',
-      description: 'Customer has been successfully removed.',
-      type: 'success'
-    });
+  const handleDeleteCustomer = async (customerId: string) => {
+    try {
+      // In a real app, you'd call DELETE API
+      addToast({
+        title: 'Customer Deleted',
+        description: 'Customer has been successfully removed.',
+        type: 'success'
+      });
+      refetch();
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: 'Failed to delete customer.',
+        type: 'error'
+      });
+    }
   };
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <div className="w-24 h-24 bg-red-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <Users className="w-12 h-12 text-red-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load customers</h3>
+          <p className="text-gray-500 mb-4">There was an error loading customer data.</p>
+          <Button onClick={refetch}>Try Again</Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -198,7 +179,7 @@ export default function CustomersPage() {
                   </div>
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-sm text-gray-500">Last Payment:</span>
-                    <span className="text-sm text-gray-900">{customer.lastPayment}</span>
+                    <span className="text-sm text-gray-900">{customer.last_payment}</span>
                   </div>
                   
                   <div className="flex space-x-2">

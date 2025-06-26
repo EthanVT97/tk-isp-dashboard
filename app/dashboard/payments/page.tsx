@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Button } from '@/components/ui/button';
 import { CreditCard, Smartphone, Building2, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useLanguage } from '@/lib/contexts/language-context';
+import { useApi } from '@/hooks/use-api';
+import { LoadingTable } from '@/components/ui/loading-spinner';
 import { cn } from '@/lib/utils';
 
 interface Transaction {
   id: string;
-  customerName: string;
+  customer_name: string;
   amount: number;
   method: 'kbz' | 'wave' | 'bank';
   status: 'completed' | 'pending' | 'failed';
@@ -17,90 +18,9 @@ interface Transaction {
   reference: string;
 }
 
-interface PaymentStats {
-  totalRevenue: number;
-  kbzPayments: number;
-  wavePayments: number;
-  bankTransfers: number;
-  successRate: number;
-}
-
 export default function PaymentsPage() {
   const { language, t } = useLanguage();
-  const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [stats, setStats] = useState<PaymentStats>({
-    totalRevenue: 0,
-    kbzPayments: 0,
-    wavePayments: 0,
-    bankTransfers: 0,
-    successRate: 0
-  });
-
-  useEffect(() => {
-    // Mock data
-    const mockTransactions: Transaction[] = [
-      {
-        id: 'TXN001',
-        customerName: 'မောင်ရဲမင်း',
-        amount: 50000,
-        method: 'kbz',
-        status: 'completed',
-        date: '2024-12-15 14:30',
-        reference: 'KBZ-2024-001'
-      },
-      {
-        id: 'TXN002',
-        customerName: 'Daw Thida',
-        amount: 35000,
-        method: 'wave',
-        status: 'completed',
-        date: '2024-12-15 13:15',
-        reference: 'WAVE-2024-002'
-      },
-      {
-        id: 'TXN003',
-        customerName: 'Ko Aung',
-        amount: 25000,
-        method: 'bank',
-        status: 'pending',
-        date: '2024-12-15 12:00',
-        reference: 'BANK-2024-003'
-      },
-      {
-        id: 'TXN004',
-        customerName: 'Ma Su Su',
-        amount: 40000,
-        method: 'kbz',
-        status: 'failed',
-        date: '2024-12-15 11:45',
-        reference: 'KBZ-2024-004'
-      },
-      {
-        id: 'TXN005',
-        customerName: 'U Tun Tun',
-        amount: 60000,
-        method: 'wave',
-        status: 'completed',
-        date: '2024-12-15 10:30',
-        reference: 'WAVE-2024-005'
-      }
-    ];
-
-    const mockStats: PaymentStats = {
-      totalRevenue: 4560000,
-      kbzPayments: 1850000,
-      wavePayments: 1420000,
-      bankTransfers: 1290000,
-      successRate: 94.2
-    };
-
-    setTimeout(() => {
-      setTransactions(mockTransactions);
-      setStats(mockStats);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const { data: transactions, loading, error } = useApi<Transaction[]>('/api/dashboard/payments');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US').format(amount) + ' MMK';
@@ -157,6 +77,19 @@ export default function PaymentsPage() {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Calculate stats from transactions
+  const stats = React.useMemo(() => {
+    if (!transactions) return { totalRevenue: 0, kbzPayments: 0, wavePayments: 0, bankTransfers: 0 };
+    
+    const completed = transactions.filter(t => t.status === 'completed');
+    const totalRevenue = completed.reduce((sum, t) => sum + t.amount, 0);
+    const kbzPayments = completed.filter(t => t.method === 'kbz').reduce((sum, t) => sum + t.amount, 0);
+    const wavePayments = completed.filter(t => t.method === 'wave').reduce((sum, t) => sum + t.amount, 0);
+    const bankTransfers = completed.filter(t => t.method === 'bank').reduce((sum, t) => sum + t.amount, 0);
+    
+    return { totalRevenue, kbzPayments, wavePayments, bankTransfers };
+  }, [transactions]);
 
   return (
     <DashboardLayout>
@@ -218,7 +151,9 @@ export default function PaymentsPage() {
                 <p className="text-2xl font-bold text-gray-900 mb-1">
                   {formatCurrency(stats.kbzPayments)}
                 </p>
-                <p className="text-sm text-blue-600">40.6% of total</p>
+                <p className="text-sm text-blue-600">
+                  {stats.totalRevenue > 0 ? ((stats.kbzPayments / stats.totalRevenue) * 100).toFixed(1) : 0}% of total
+                </p>
               </>
             )}
           </div>
@@ -244,7 +179,9 @@ export default function PaymentsPage() {
                 <p className="text-2xl font-bold text-gray-900 mb-1">
                   {formatCurrency(stats.wavePayments)}
                 </p>
-                <p className="text-sm text-purple-600">31.1% of total</p>
+                <p className="text-sm text-purple-600">
+                  {stats.totalRevenue > 0 ? ((stats.wavePayments / stats.totalRevenue) * 100).toFixed(1) : 0}% of total
+                </p>
               </>
             )}
           </div>
@@ -270,7 +207,9 @@ export default function PaymentsPage() {
                 <p className="text-2xl font-bold text-gray-900 mb-1">
                   {formatCurrency(stats.bankTransfers)}
                 </p>
-                <p className="text-sm text-green-600">28.3% of total</p>
+                <p className="text-sm text-green-600">
+                  {stats.totalRevenue > 0 ? ((stats.bankTransfers / stats.totalRevenue) * 100).toFixed(1) : 0}% of total
+                </p>
               </>
             )}
           </div>
@@ -313,24 +252,16 @@ export default function PaymentsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <td key={j} className="px-6 py-4 whitespace-nowrap">
-                          <div className="animate-pulse h-4 bg-gray-200 rounded"></div>
-                        </td>
-                      ))}
-                    </tr>
-                  ))
+                  <LoadingTable rows={5} cols={6} />
                 ) : (
-                  transactions.map((transaction) => (
+                  transactions?.map((transaction) => (
                     <tr key={transaction.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className={cn(
                           "text-sm font-medium text-gray-900",
                           language === 'my' && "font-myanmar"
                         )}>
-                          {transaction.customerName}
+                          {transaction.customer_name}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
