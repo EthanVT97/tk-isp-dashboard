@@ -4,20 +4,23 @@ import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from './button';
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-}
-
 interface ErrorBoundaryProps {
   children: React.ReactNode;
-  fallback?: React.ComponentType<{ error: Error; retry: () => void }>;
+  fallback?: React.ComponentType<{ error: Error; resetError: () => void }>;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundaryClass extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -25,18 +28,18 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error Boundary caught an error:', error, errorInfo);
+    console.error('Error caught by boundary:', error, errorInfo);
   }
-
-  retry = () => {
-    this.setState({ hasError: false, error: undefined });
-  };
 
   render() {
     if (this.state.hasError) {
+      const resetError = () => {
+        this.setState({ hasError: false, error: null });
+      };
+
       if (this.props.fallback) {
         const FallbackComponent = this.props.fallback;
-        return <FallbackComponent error={this.state.error!} retry={this.retry} />;
+        return <FallbackComponent error={this.state.error!} resetError={resetError} />;
       }
 
       return (
@@ -49,11 +52,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               Something went wrong
             </h3>
             <p className="text-gray-600 mb-4">
-              {this.state.error?.message || 'An unexpected error occurred'}
+              An error occurred while loading this component. Please try again.
             </p>
-            <Button onClick={this.retry} className="flex items-center space-x-2">
+            <Button onClick={resetError} className="flex items-center space-x-2">
               <RefreshCw className="w-4 h-4" />
-              <span>Try again</span>
+              <span>Try Again</span>
             </Button>
           </div>
         </div>
@@ -62,4 +65,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
     return this.props.children;
   }
+}
+
+export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
+  return (
+    <ErrorBoundaryClass fallback={fallback}>
+      {children}
+    </ErrorBoundaryClass>
+  );
 }

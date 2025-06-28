@@ -32,25 +32,56 @@ class APIClient {
         headers.Authorization = `Bearer ${this.token}`
       }
 
+      console.log(`Making API request to: ${url}`)
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+
       const response = await fetch(url, {
         ...options,
         headers,
-        // Add timeout for better error handling
-        signal: AbortSignal.timeout(10000), // 10 second timeout
+        signal: controller.signal,
       })
 
+      clearTimeout(timeoutId)
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`)
+        const errorText = await response.text().catch(() => 'Unknown error')
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.error?.message || errorData.message || errorMessage
+        } catch {
+          // If not JSON, use the text as error message
+          if (errorText) {
+            errorMessage = errorText
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      console.log(`API response from ${endpoint}:`, data)
       return { data, error: null }
     } catch (error) {
       console.error('API Request Error:', error)
+      
+      let errorMessage = 'Unknown error occurred'
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timeout - please check your connection'
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to connect to server - please check if the backend is running'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       return { 
         data: null, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: errorMessage
       }
     }
   }

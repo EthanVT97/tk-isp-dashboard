@@ -9,19 +9,20 @@ interface ToastProps {
   description?: string;
   type: 'success' | 'error' | 'warning' | 'info';
   onClose: () => void;
+  duration?: number;
 }
 
-export function Toast({ title, description, type, onClose }: ToastProps) {
+export function Toast({ title, description, type, onClose, duration = 5000 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(onClose, 300); // Wait for animation to complete
-    }, 5000);
+    }, duration);
 
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [duration, onClose]);
 
   const getIcon = () => {
     switch (type) {
@@ -33,12 +34,10 @@ export function Toast({ title, description, type, onClose }: ToastProps) {
         return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
       case 'info':
         return <Info className="w-5 h-5 text-blue-600" />;
-      default:
-        return <Info className="w-5 h-5 text-blue-600" />;
     }
   };
 
-  const getBackgroundColor = () => {
+  const getStyles = () => {
     switch (type) {
       case 'success':
         return 'bg-green-50 border-green-200';
@@ -48,8 +47,6 @@ export function Toast({ title, description, type, onClose }: ToastProps) {
         return 'bg-yellow-50 border-yellow-200';
       case 'info':
         return 'bg-blue-50 border-blue-200';
-      default:
-        return 'bg-blue-50 border-blue-200';
     }
   };
 
@@ -57,7 +54,7 @@ export function Toast({ title, description, type, onClose }: ToastProps) {
     <div
       className={cn(
         'max-w-sm w-full border rounded-lg shadow-lg p-4 transition-all duration-300 transform',
-        getBackgroundColor(),
+        getStyles(),
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       )}
     >
@@ -65,26 +62,21 @@ export function Toast({ title, description, type, onClose }: ToastProps) {
         <div className="flex-shrink-0">
           {getIcon()}
         </div>
-        <div className="ml-3 w-0 flex-1">
-          <p className="text-sm font-medium text-gray-900">
-            {title}
-          </p>
+        <div className="ml-3 flex-1">
+          <p className="text-sm font-medium text-gray-900">{title}</p>
           {description && (
-            <p className="mt-1 text-sm text-gray-500">
-              {description}
-            </p>
+            <p className="mt-1 text-sm text-gray-600">{description}</p>
           )}
         </div>
-        <div className="ml-4 flex-shrink-0 flex">
+        <div className="ml-4 flex-shrink-0">
           <button
-            className="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             onClick={() => {
               setIsVisible(false);
               setTimeout(onClose, 300);
             }}
+            className="inline-flex text-gray-400 hover:text-gray-600 focus:outline-none"
           >
-            <span className="sr-only">Close</span>
-            <X className="h-5 w-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
