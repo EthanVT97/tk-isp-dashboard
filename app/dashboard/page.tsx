@@ -8,7 +8,7 @@ import { Users, Wifi, DollarSign, Activity, AlertTriangle, CheckCircle, MessageS
 import { useLanguage } from '@/lib/contexts/language-context';
 import { useOverviewStats, useHealthCheck } from '@/hooks/use-backend-api';
 import { getISPNetworkData } from '@/lib/api-client';
-import { LoadingCard } from '@/components/ui/loading-spinner';
+import { LoadingCard, LoadingPage } from '@/components/ui/loading-spinner';
 import { cn } from '@/lib/utils';
 
 interface NetworkData {
@@ -67,7 +67,8 @@ export default function DashboardPage() {
     networkUptime: 99.8,
   };
 
-  if (statsError) {
+  // Show error state if backend is completely unreachable
+  if (statsError && !backendStats) {
     console.error('Dashboard stats error:', statsError);
   }
 
@@ -102,6 +103,24 @@ export default function DashboardPage() {
             </span>
           </div>
         </div>
+
+        {/* Connection Status Banner */}
+        {statsError && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <div>
+                <h3 className="font-medium text-yellow-800">Backend Connection Issue</h3>
+                <p className="text-sm text-yellow-700">
+                  Unable to connect to backend API. Displaying cached data and ISP features only.
+                </p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  Error: {statsError}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -282,6 +301,11 @@ export default function DashboardPage() {
                     <p className="text-sm text-red-800">
                       Unable to connect to backend API. Some features may be limited.
                     </p>
+                    {statsError && (
+                      <p className="text-xs text-red-600 mt-2">
+                        Error: {statsError}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
