@@ -11,7 +11,7 @@ interface ErrorBoundaryState {
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
-  fallback?: React.ComponentType<{ error?: Error; resetError: () => void }>;
+  fallback?: React.ComponentType<{ error: Error; retry: () => void }>;
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -28,7 +28,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     console.error('Error Boundary caught an error:', error, errorInfo);
   }
 
-  resetError = () => {
+  retry = () => {
     this.setState({ hasError: false, error: undefined });
   };
 
@@ -36,7 +36,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     if (this.state.hasError) {
       if (this.props.fallback) {
         const FallbackComponent = this.props.fallback;
-        return <FallbackComponent error={this.state.error} resetError={this.resetError} />;
+        return <FallbackComponent error={this.state.error!} retry={this.retry} />;
       }
 
       return (
@@ -49,21 +49,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               Something went wrong
             </h3>
             <p className="text-gray-600 mb-4">
-              An unexpected error occurred. Please try refreshing the page.
+              {this.state.error?.message || 'An unexpected error occurred'}
             </p>
-            {this.state.error && (
-              <details className="text-left mb-4 p-3 bg-gray-50 rounded-lg">
-                <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                  Error Details
-                </summary>
-                <pre className="mt-2 text-xs text-red-600 overflow-auto">
-                  {this.state.error.message}
-                </pre>
-              </details>
-            )}
-            <Button onClick={this.resetError} className="flex items-center space-x-2 mx-auto">
+            <Button onClick={this.retry} className="flex items-center space-x-2">
               <RefreshCw className="w-4 h-4" />
-              <span>Try Again</span>
+              <span>Try again</span>
             </Button>
           </div>
         </div>
@@ -72,25 +62,4 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
     return this.props.children;
   }
-}
-
-// Hook version for functional components
-export function useErrorBoundary() {
-  const [error, setError] = React.useState<Error | null>(null);
-
-  const resetError = React.useCallback(() => {
-    setError(null);
-  }, []);
-
-  const captureError = React.useCallback((error: Error) => {
-    setError(error);
-  }, []);
-
-  React.useEffect(() => {
-    if (error) {
-      throw error;
-    }
-  }, [error]);
-
-  return { captureError, resetError };
 }

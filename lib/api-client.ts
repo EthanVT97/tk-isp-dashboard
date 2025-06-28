@@ -1,19 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
-
 // Backend API Configuration
-const API_BASE_URL = 'https://mmlink-backend.onrender.com'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mmlink-backend.onrender.com'
 
-// Supabase Configuration (fallback for local data)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-let supabase: any = null
-
-if (supabaseUrl && supabaseAnonKey) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey)
-}
-
-// API Client Class
+// API Client Class for Backend Integration
 class APIClient {
   private baseURL: string
   private token: string | null = null
@@ -47,11 +35,13 @@ class APIClient {
       const response = await fetch(url, {
         ...options,
         headers,
+        // Add timeout for better error handling
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || `HTTP ${response.status}`)
+        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
@@ -262,7 +252,7 @@ class APIClient {
 // Create singleton instance
 export const apiClient = new APIClient()
 
-// Fallback functions for ISP-specific data (when backend doesn't have ISP data)
+// ISP-specific data functions (mock data for ISP features)
 export const getISPCustomers = async () => {
   // Mock ISP customer data since backend is for bot management
   return {
@@ -299,6 +289,28 @@ export const getISPCustomers = async () => {
         status: 'inactive',
         join_date: '2024-03-10',
         last_payment: '2024-11-15'
+      },
+      {
+        id: 'CUST004',
+        name: 'Ma Su Su',
+        phone: '+95 9 777 888 999',
+        email: 'susu@email.com',
+        address: 'No.321, Bagan Street, Bagan',
+        package: 'Premium 100Mbps',
+        status: 'active',
+        join_date: '2024-04-05',
+        last_payment: '2024-12-01'
+      },
+      {
+        id: 'CUST005',
+        name: 'U Tun Tun',
+        phone: '+95 9 444 555 666',
+        email: 'tuntun@email.com',
+        address: 'No.654, Mawlamyine Road, Mawlamyine',
+        package: 'Standard 50Mbps',
+        status: 'suspended',
+        join_date: '2024-05-12',
+        last_payment: '2024-11-20'
       }
     ],
     error: null
@@ -335,6 +347,24 @@ export const getISPPayments = async () => {
         status: 'pending',
         date: '2024-12-15 12:00',
         reference: 'BANK-2024-003'
+      },
+      {
+        id: 'TXN004',
+        customer_name: 'Ma Su Su',
+        amount: 50000,
+        method: 'kbz',
+        status: 'failed',
+        date: '2024-12-15 11:45',
+        reference: 'KBZ-2024-004'
+      },
+      {
+        id: 'TXN005',
+        customer_name: 'U Tun Tun',
+        amount: 35000,
+        method: 'wave',
+        status: 'completed',
+        date: '2024-12-15 10:30',
+        reference: 'WAVE-2024-005'
       }
     ],
     error: null
@@ -367,6 +397,17 @@ export const getISPNetworkData = async () => {
           connected_users: 89,
           bandwidth: 67,
           last_seen: '2024-12-15 14:29'
+        },
+        {
+          id: 'AP001',
+          name: 'Access Point - Downtown',
+          type: 'access_point',
+          status: 'warning',
+          location: 'Downtown Area',
+          uptime: '12 days, 3 hours',
+          connected_users: 45,
+          bandwidth: 92,
+          last_seen: '2024-12-15 14:25'
         }
       ],
       metrics: {
