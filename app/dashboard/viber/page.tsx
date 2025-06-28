@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   MessageSquare, 
   Bot, 
@@ -12,46 +13,48 @@ import {
   Activity,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Search,
+  Smartphone,
+  Zap
 } from 'lucide-react';
 import { useLanguage } from '@/lib/contexts/language-context';
-import { useApi } from '@/hooks/use-api';
+import { useToast } from '@/lib/contexts/toast-context';
+import { useMessages, useUsers, useOverviewStats, useBackendApiMutation } from '@/hooks/use-backend-api';
+import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-
-interface ViberMessage {
-  id: string;
-  customer_name: string;
-  message: string;
-  response: string;
-  timestamp: string;
-  status: 'pending' | 'responded' | 'escalated';
-  is_auto_response: boolean;
-}
-
-interface ViberStats {
-  total_messages: number;
-  auto_responses: number;
-  manual_responses: number;
-  response_time: number;
-  satisfaction: number;
-}
-
-interface ViberData {
-  messages: ViberMessage[];
-  stats: ViberStats;
-}
 
 export default function ViberPage() {
   const { language, t } = useLanguage();
-  const { data, loading, error } = useApi<ViberData>('/api/dashboard/viber');
+  const { addToast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [selectedPlatform, setSelectedPlatform] = useState<'all' | 'viber' | 'telegram'>('all');
+
+  // Backend API hooks
+  const { data: messagesData, loading: messagesLoading, error: messagesError, refetch: refetchMessages } = useMessages({ limit: 20 });
+  const { data: usersData, loading: usersLoading } = useUsers();
+  const { data: statsData, loading: statsLoading } = useOverviewStats();
+  const { mutate: broadcastMutate, loading: broadcastLoading } = useBackendApiMutation();
+
+  const messages = messagesData?.messages || [];
+  const users = usersData?.users || [];
+  const stats = statsData?.stats;
+
+  const filteredMessages = messages.filter(message =>
+    message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    message.user?.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    message.user?.username?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'responded':
+      case 'delivered':
+      case 'sent':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-600" />;
-      case 'escalated':
+      case 'failed':
         return <AlertCircle className="w-4 h-4 text-red-600" />;
       default:
         return <Clock className="w-4 h-4 text-gray-600" />;
@@ -60,15 +63,73 @@ export default function ViberPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'responded':
+      case 'delivered':
+      case 'sent':
         return 'bg-green-100 text-green-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'escalated':
+      case 'failed':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case 'viber':
+        return <Smartphone className="w-4 h-4 text-purple-600" />;
+      case 'telegram':
+        return <Send className="w-4 h-4 text-blue-600" />;
+      default:
+        return <MessageSquare className="w-4 h-4 text-gray-600" />;
+    }
+  };
+
+  const handleBroadcast = async () => {
+    if (!broadcastMessage.trim()) {
+      addToast({
+        title: 'Error',
+        description: 'Please enter a message to broadcast.',
+        type: 'error'
+      });
+      return;
+    }
+
+    const payload = {
+      text: broadcastMessage,
+      ...(selectedPlatform !== 'all' && { platform: selectedPlatform })
+    };
+
+    const result = await broadcastMutate(
+      (data) => apiClient.broadcastMessage(data),
+      payload
+    );
+
+    if (result) {
+      addToast({
+        title: 'Broadcast Sent',
+        description: 'Message has been sent to all users successfully.',
+        type: 'success'
+      });
+      setBroadcastMessage('');
+      refetchMessages();
+    } else {
+      addToast({
+        title: 'Broadcast Failed',
+        description: 'Failed to send broadcast message. Please try again.',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleReplyToMessage = async (messageId: string, userId: string, platform: string) => {
+    // This would open a reply modal or interface
+    addToast({
+      title: 'Reply Feature',
+      description: 'Reply functionality would be implemented here.',
+      type: 'info'
+    });
   };
 
   return (
@@ -81,10 +142,10 @@ export default function ViberPage() {
               "text-3xl font-bold text-gray-900",
               language === 'my' && "font-myanmar"
             )}>
-              {t('nav.viber')}
+              Bot Management
             </h1>
             <p className="text-gray-600 mt-1">
-              Manage Viber bot conversations and automated responses
+              Manage Viber and Telegram bot conversations and automated responses
             </p>
           </div>
           <Button className="flex items-center space-x-2">
@@ -96,7 +157,26 @@ export default function ViberPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            {loading ? (
+            {statsLoading ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Total Users</p>
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalUsers?.toLocaleString() || '0'}
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            {statsLoading ? (
               <div className="animate-pulse space-y-2">
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 <div className="h-8 bg-gray-200 rounded w-3/4"></div>
@@ -105,17 +185,17 @@ export default function ViberPage() {
               <>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium text-gray-600">Total Messages</p>
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
+                  <MessageSquare className="w-5 h-5 text-green-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {data?.stats?.total_messages?.toLocaleString() || '0'}
+                  {stats?.totalMessages?.toLocaleString() || '0'}
                 </p>
               </>
             )}
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            {loading ? (
+            {statsLoading ? (
               <div className="animate-pulse space-y-2">
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 <div className="h-8 bg-gray-200 rounded w-3/4"></div>
@@ -123,82 +203,140 @@ export default function ViberPage() {
             ) : (
               <>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Auto Responses</p>
+                  <p className="text-sm font-medium text-gray-600">Messages Today</p>
+                  <Activity className="w-5 h-5 text-purple-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.messagesToday?.toLocaleString() || '0'}
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            {statsLoading ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Active Sessions</p>
+                  <Zap className="w-5 h-5 text-yellow-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.activeSessions?.toLocaleString() || '0'}
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            {statsLoading ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-600">Bot Status</p>
                   <Bot className="w-5 h-5 text-green-600" />
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {data?.stats?.auto_responses?.toLocaleString() || '0'}
-                </p>
-                <p className="text-sm text-green-600">
-                  {data?.stats?.total_messages ? 
-                    ((data.stats.auto_responses / data.stats.total_messages) * 100).toFixed(1) : 0}% automated
-                </p>
+                <p className="text-2xl font-bold text-green-600">Online</p>
               </>
             )}
           </div>
+        </div>
 
+        {/* Platform Distribution */}
+        {stats?.platforms && (
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            {loading ? (
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Manual Responses</p>
-                  <Users className="w-5 h-5 text-purple-600" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Platform Distribution</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <Smartphone className="w-5 h-5 text-purple-600" />
+                    <span className="font-medium text-gray-900">Viber</span>
+                  </div>
+                  <span className="text-sm text-purple-600">
+                    {stats.platforms.viber.users} users ({stats.platforms.viber.percentage.toFixed(1)}%)
+                  </span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {data?.stats?.manual_responses?.toLocaleString() || '0'}
-                </p>
-                <p className="text-sm text-purple-600">
-                  {data?.stats?.total_messages ? 
-                    ((data.stats.manual_responses / data.stats.total_messages) * 100).toFixed(1) : 0}% manual
-                </p>
-              </>
-            )}
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-purple-600 h-2 rounded-full transition-smooth"
+                    style={{ width: `${stats.platforms.viber.percentage}%` }}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <Send className="w-5 h-5 text-blue-600" />
+                    <span className="font-medium text-gray-900">Telegram</span>
+                  </div>
+                  <span className="text-sm text-blue-600">
+                    {stats.platforms.telegram.users} users ({stats.platforms.telegram.percentage.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-smooth"
+                    style={{ width: `${stats.platforms.telegram.percentage}%` }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
+        )}
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            {loading ? (
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
-                  <Activity className="w-5 h-5 text-yellow-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {data?.stats?.response_time || 0}min
-                </p>
-                <p className="text-sm text-green-600">-15% from last week</p>
-              </>
-            )}
+        {/* Broadcast Message */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Broadcast Message</h3>
+          <div className="space-y-4">
+            <div className="flex space-x-4">
+              <select
+                value={selectedPlatform}
+                onChange={(e) => setSelectedPlatform(e.target.value as 'all' | 'viber' | 'telegram')}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Platforms</option>
+                <option value="viber">Viber Only</option>
+                <option value="telegram">Telegram Only</option>
+              </select>
+            </div>
+            <div className="flex space-x-4">
+              <Input
+                placeholder="Enter your broadcast message..."
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleBroadcast}
+                disabled={broadcastLoading || !broadcastMessage.trim()}
+                className="flex items-center space-x-2"
+              >
+                <Send className="w-4 h-4" />
+                <span>{broadcastLoading ? 'Sending...' : 'Broadcast'}</span>
+              </Button>
+            </div>
           </div>
+        </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            {loading ? (
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">Satisfaction</p>
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {data?.stats?.satisfaction || 0}/5.0
-                </p>
-                <p className="text-sm text-green-600">+0.3 from last month</p>
-              </>
-            )}
-          </div>
+        {/* Search Messages */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Input
+            placeholder="Search messages..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
 
         {/* Recent Messages */}
@@ -213,7 +351,7 @@ export default function ViberPage() {
           </div>
           
           <div className="divide-y divide-gray-200">
-            {loading ? (
+            {messagesLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="p-6 animate-pulse">
                   <div className="space-y-3">
@@ -223,25 +361,39 @@ export default function ViberPage() {
                   </div>
                 </div>
               ))
+            ) : messagesError ? (
+              <div className="p-6 text-center">
+                <div className="text-red-600 mb-2">Failed to load messages</div>
+                <Button onClick={refetchMessages} variant="outline" size="sm">
+                  Try Again
+                </Button>
+              </div>
+            ) : filteredMessages.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">
+                {searchTerm ? 'No messages found matching your search.' : 'No messages available.'}
+              </div>
             ) : (
-              data?.messages?.map((message) => (
+              filteredMessages.map((message) => (
                 <div key={message.id} className="p-6 hover:bg-gray-50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
+                        {getPlatformIcon(message.platform)}
                         <h4 className={cn(
                           "font-medium text-gray-900",
                           language === 'my' && "font-myanmar"
                         )}>
-                          {message.customer_name}
+                          {message.user?.displayName || message.user?.username || 'Unknown User'}
                         </h4>
-                        <span className="text-sm text-gray-500">{message.timestamp}</span>
-                        {message.is_auto_response && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            <Bot className="w-3 h-3 mr-1" />
-                            Auto
-                          </span>
-                        )}
+                        <span className="text-sm text-gray-500">
+                          {new Date(message.createdAt).toLocaleString()}
+                        </span>
+                        <span className={cn(
+                          "inline-flex px-2 py-1 rounded-full text-xs font-medium",
+                          message.direction === 'in' ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+                        )}>
+                          {message.direction === 'in' ? 'Incoming' : 'Outgoing'}
+                        </span>
                       </div>
                       
                       <div className="space-y-2">
@@ -250,20 +402,9 @@ export default function ViberPage() {
                             "text-sm text-gray-800",
                             language === 'my' && "font-myanmar"
                           )}>
-                            <strong>Customer:</strong> {message.message}
+                            {message.content}
                           </p>
                         </div>
-                        
-                        {message.response && (
-                          <div className="bg-blue-50 rounded-lg p-3">
-                            <p className={cn(
-                              "text-sm text-blue-800",
-                              language === 'my' && "font-myanmar"
-                            )}>
-                              <strong>Response:</strong> {message.response}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
                     
@@ -276,8 +417,12 @@ export default function ViberPage() {
                         {message.status}
                       </span>
                       
-                      {message.status === 'pending' && (
-                        <Button size="sm" className="ml-2">
+                      {message.direction === 'in' && (
+                        <Button 
+                          size="sm" 
+                          className="ml-2"
+                          onClick={() => handleReplyToMessage(message.id, message.userId, message.platform)}
+                        >
                           <Send className="w-4 h-4 mr-1" />
                           Reply
                         </Button>
@@ -301,25 +446,25 @@ export default function ViberPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Internet Issues</h4>
+              <h4 className="font-medium text-gray-900 mb-2">Welcome Message</h4>
               <p className="text-sm text-gray-600 mb-3">
-                Standard response for connectivity problems
+                Greeting for new users joining the bot
               </p>
               <Button variant="outline" size="sm">Use Template</Button>
             </div>
             
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Payment Inquiry</h4>
+              <h4 className="font-medium text-gray-900 mb-2">Support Response</h4>
               <p className="text-sm text-gray-600 mb-3">
-                Information about payment methods and billing
+                Standard response for support inquiries
               </p>
               <Button variant="outline" size="sm">Use Template</Button>
             </div>
             
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Package Upgrade</h4>
+              <h4 className="font-medium text-gray-900 mb-2">Service Information</h4>
               <p className="text-sm text-gray-600 mb-3">
-                Details about available packages and upgrades
+                Details about available services and packages
               </p>
               <Button variant="outline" size="sm">Use Template</Button>
             </div>

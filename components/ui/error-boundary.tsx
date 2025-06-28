@@ -25,7 +25,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    console.error('Error Boundary caught an error:', error, errorInfo);
   }
 
   resetError = () => {
@@ -49,18 +49,19 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               Something went wrong
             </h3>
             <p className="text-gray-600 mb-4">
-              We encountered an error while loading this section. Please try again.
+              An unexpected error occurred. Please try refreshing the page.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="text-left bg-gray-100 p-3 rounded mb-4">
-                <summary className="cursor-pointer text-sm font-medium">Error Details</summary>
-                <pre className="text-xs mt-2 overflow-auto">
+            {this.state.error && (
+              <details className="text-left mb-4 p-3 bg-gray-50 rounded-lg">
+                <summary className="cursor-pointer text-sm font-medium text-gray-700">
+                  Error Details
+                </summary>
+                <pre className="mt-2 text-xs text-red-600 overflow-auto">
                   {this.state.error.message}
-                  {this.state.error.stack}
                 </pre>
               </details>
             )}
-            <Button onClick={this.resetError} className="flex items-center space-x-2">
+            <Button onClick={this.resetError} className="flex items-center space-x-2 mx-auto">
               <RefreshCw className="w-4 h-4" />
               <span>Try Again</span>
             </Button>
