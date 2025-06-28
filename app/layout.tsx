@@ -1,19 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter, Noto_Sans_Myanmar } from 'next/font/google';
 import { LanguageProvider } from '@/lib/contexts/language-context';
 import { ToastProvider } from '@/lib/contexts/toast-context';
-
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter'
-});
-
-const notoSansMyanmar = Noto_Sans_Myanmar({ 
-  subsets: ['myanmar'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-myanmar'
-});
 
 export const metadata: Metadata = {
   title: 'ISP Business Control Dashboard',
@@ -27,7 +15,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${notoSansMyanmar.variable} font-sans antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-sans antialiased">
         <LanguageProvider>
           <ToastProvider>
             {children}

@@ -3,15 +3,18 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!supabaseUrl) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
+// Use placeholder values if environment variables are not set
+const defaultUrl = 'https://placeholder.supabase.co'
+const defaultKey = 'placeholder_anon_key'
 
-if (!supabaseAnonKey) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
-}
+const finalUrl = supabaseUrl || defaultUrl
+const finalKey = supabaseAnonKey || defaultKey
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Only create client if we have real Supabase credentials
+const hasRealCredentials = supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co' && 
+                          supabaseAnonKey && supabaseAnonKey !== 'placeholder_anon_key'
+
+export const supabase = hasRealCredentials ? createClient(finalUrl, finalKey) : null
 
 // Database Types
 export interface Customer {
@@ -62,8 +65,12 @@ export interface NetworkMetric {
   created_at: string
 }
 
-// Auth functions
+// Auth functions - only work with real Supabase
 export const signIn = async (email: string, password: string) => {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase not configured' } }
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -72,6 +79,10 @@ export const signIn = async (email: string, password: string) => {
 }
 
 export const signUp = async (email: string, password: string) => {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase not configured' } }
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -80,11 +91,19 @@ export const signUp = async (email: string, password: string) => {
 }
 
 export const signOut = async () => {
+  if (!supabase) {
+    return { error: { message: 'Supabase not configured' } }
+  }
+
   const { error } = await supabase.auth.signOut()
   return { error }
 }
 
 export const getCurrentUser = async () => {
+  if (!supabase) {
+    return null
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
   return user
 }
